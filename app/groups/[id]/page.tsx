@@ -78,7 +78,7 @@ export default async function GroupDetailPage({
           },
           readBy: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'asc' },
         take: 50,
       },
     },

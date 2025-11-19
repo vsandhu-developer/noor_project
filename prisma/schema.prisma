@@ -118,6 +118,7 @@ model Group {
   courseTopic String
   tags        String[]
   requiresApproval Boolean @default(false)
+  inviteToken String?  @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -232,6 +233,8 @@ model File {
   fileSize    Int
   filePath    String
   version     Int      @default(1)
+  shareToken  String?  @unique
+  isPublic    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

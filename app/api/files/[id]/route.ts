@@ -10,33 +10,51 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const searchParams = request.nextUrl.searchParams
+    const shareToken = searchParams.get('token')
 
-    const file = await prisma.file.findUnique({
-      where: { id: params.id },
-      include: {
-        group: {
-          include: {
-            members: {
-              where: { userId: session.user.id },
+    let file
+
+    if (shareToken) {
+      file = await prisma.file.findUnique({
+        where: { shareToken },
+      })
+
+      if (!file || !file.isPublic) {
+        return NextResponse.json(
+          { error: 'File not found or not publicly accessible' },
+          { status: 404 }
+        )
+      }
+    } else {
+      const session = await getServerSession(authOptions)
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      file = await prisma.file.findUnique({
+        where: { id: params.id },
+        include: {
+          group: {
+            include: {
+              members: {
+                where: { userId: session.user.id },
+              },
             },
           },
         },
-      },
-    })
+      })
 
-    if (!file) {
-      return NextResponse.json({ error: 'File not found' }, { status: 404 })
-    }
+      if (!file) {
+        return NextResponse.json({ error: 'File not found' }, { status: 404 })
+      }
 
-    if (file.group.members.length === 0) {
-      return NextResponse.json(
-        { error: 'Not a member of this group' },
-        { status: 403 }
-      )
+      if (file.group.members.length === 0) {
+        return NextResponse.json(
+          { error: 'Not a member of this group' },
+          { status: 403 }
+        )
+      }
     }
 
     const filePath = join(process.cwd(), 'public', file.filePath)
