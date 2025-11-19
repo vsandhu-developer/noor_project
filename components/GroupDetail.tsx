@@ -174,7 +174,9 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
 
   const handleShareFile = async (fileId: string) => {
     try {
-      setSharingFiles(new Set([...sharingFiles, fileId]))
+      const newSet = new Set(sharingFiles)
+      newSet.add(fileId)
+      setSharingFiles(newSet)
       const response = await fetch(`/api/files/${fileId}/share`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -192,7 +194,9 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
     } catch (error) {
       toast.error('An error occurred')
     } finally {
-      setSharingFiles(new Set([...sharingFiles].filter(id => id !== fileId)))
+      const newSet = new Set(sharingFiles)
+      newSet.delete(fileId)
+      setSharingFiles(newSet)
     }
   }
 
