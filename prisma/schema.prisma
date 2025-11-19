@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  RESTRICTED
+  PRIVATE
+}
+
+enum EventRecurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum RSVPStatus {
+  YES
+  MAYBE
+  NO
+}
+
+enum NotificationType {
+  MESSAGE
+  INVITATION
+  EVENT
+  FILE_UPLOAD
+  MEMBER_JOINED
+  MEMBER_LEFT
+}
+
+enum GroupJoinStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  emailVerified     DateTime?
+  password          String
+  name              String
+  program           String?
+  semester          Int?
+  skills            String[]
+  profilePhoto      String?
+  profileVisibility ProfileVisibility @default(PUBLIC)
+  emailNotifications Boolean          @default(true)
+  pushNotifications  Boolean          @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  groups            GroupMember[]
+  messages          Message[]
+  sentMessages      DirectMessage[]   @relation("Sender")
+  receivedMessages  DirectMessage[]   @relation("Receiver")
+  notifications     Notification[]
+  events            Event[]
+  eventRSVPs        EventRSVP[]
+  uploadedFiles     File[]
+  sessions          Session[]
+  accounts          Account[]
+  groupJoinRequests GroupJoinRequest[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  courseTopic String
+  tags        String[]
+  requiresApproval Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     GroupMember[]
+  messages     Message[]
+  files        File[]
+  events       Event[]
+  joinRequests GroupJoinRequest[]
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  role      UserRole @default(MEMBER)
+  joinedAt  DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model GroupJoinRequest {
+  id        String          @id @default(cuid())
+  groupId   String
+  userId    String
+  status    GroupJoinStatus @default(PENDING)
+  message   String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user     User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readBy   MessageRead[]
+  attachments MessageAttachment[]
+}
+
+model MessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  fileName  String
+  fileType  String
+  fileSize  Int
+  filePath  String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+}
+
+model DirectMessage {
+  id        String   @id @default(cuid())
+  senderId  String
+  receiverId String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  readAt    DateTime?
+
+  sender   User @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  attachments DirectMessageAttachment[]
+}
+
+model DirectMessageAttachment {
+  id        String   @id @default(cuid())
+  messageId String
+  fileName  String
+  fileType  String
+  fileSize  Int
+  filePath  String
+  createdAt DateTime @default(now())
+
+  message DirectMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model File {
+  id          String   @id @default(cuid())
+  groupId     String
+  userId      String
+  name        String
+  fileName    String
+  fileType    String
+  fileSize    Int
+  filePath    String
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, fileName, version])
+  @@index([groupId, fileName])
+}
+
+model Event {
+  id          String          @id @default(cuid())
+  groupId     String
+  userId      String
+  title       String
+  description String?         @db.Text
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  recurrence  EventRecurrence @default(NONE)
+  reminderSent Boolean        @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  group  Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rsvps  EventRSVP[]
+}
+
+model EventRSVP {
+  id        String     @id @default(cuid())
+  eventId   String
+  userId    String
+  status    RSVPStatus
+  createdAt DateTime   @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
