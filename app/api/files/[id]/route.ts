@@ -55,19 +55,20 @@ export async function GET(
       }
     }
 
-    let fileBuffer: Buffer
+    let fileData: ArrayBuffer
     let contentType: string = file.fileType
 
     if (file.filePath.startsWith('http://') || file.filePath.startsWith('https://')) {
       const response = await fetch(file.filePath)
-      fileBuffer = Buffer.from(await response.arrayBuffer())
+      fileData = await response.arrayBuffer()
       contentType = response.headers.get('content-type') || file.fileType
     } else {
       try {
         const { readFile } = await import('fs/promises')
         const { join } = await import('path')
         const filePath = join(process.cwd(), 'public', file.filePath)
-        fileBuffer = await readFile(filePath)
+        const buffer = await readFile(filePath)
+        fileData = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
       } catch (error) {
         return NextResponse.json(
           { error: 'File not found on server. It may have been stored in cloud storage.' },
@@ -76,7 +77,7 @@ export async function GET(
       }
     }
 
-    return new NextResponse(fileBuffer, {
+    return new Response(fileData, {
       headers: {
         'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${file.fileName}"`,

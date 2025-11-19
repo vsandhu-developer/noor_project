@@ -233,6 +233,28 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
     }
   }
 
+  const handleDeleteGroup = async () => {
+    if (!confirm('Are you sure you want to delete this group? This action cannot be undone and will delete all messages, files, and events in this group.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/groups/${group.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Group deleted successfully')
+        router.push('/groups')
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to delete group')
+      }
+    } catch (error) {
+      toast.error('An error occurred')
+    }
+  }
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!messageContent.trim()) return
@@ -346,9 +368,17 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
           </Button>
         )}
         {currentMember?.role === 'ADMIN' && (
-          <div className="mt-4">
+          <div className="mt-4 flex items-center space-x-2">
             <Button onClick={handleGetInviteLink} variant="outline" size="sm">
               Get Invite Link
+            </Button>
+            <Button
+              onClick={handleDeleteGroup}
+              variant="outline"
+              size="sm"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+            >
+              Delete Group
             </Button>
             {showInviteLink && inviteUrl && (
               <div className="mt-2 p-3 bg-gray-50 rounded border">
