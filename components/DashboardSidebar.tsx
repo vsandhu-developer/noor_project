@@ -1,8 +1,8 @@
 'use client'
 
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { 
   LayoutDashboard, 
   Users, 
@@ -10,7 +10,8 @@ import {
   User, 
   Mail,
   Menu,
-  X
+  X,
+  LogOut
 } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from './ui/button'
@@ -21,7 +22,14 @@ interface DashboardSidebarProps {
 
 export function DashboardSidebar({ className = '' }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { data: session } = useSession()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+
+  const handleSignOut = async () => {
+    await signOut({ redirect: false })
+    router.push('/auth/signin')
+  }
 
   const menuItems = [
     {
@@ -128,7 +136,7 @@ export function DashboardSidebar({ className = '' }: DashboardSidebarProps) {
           </nav>
 
           <div className="p-4 border-t border-gray-200 hidden lg:block">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 mb-4">
               <p className="font-medium text-gray-900">Quick Actions</p>
               <div className="mt-2 space-y-1">
                 <Link
@@ -145,6 +153,45 @@ export function DashboardSidebar({ className = '' }: DashboardSidebarProps) {
                 </Link>
               </div>
             </div>
+            {session?.user && (
+              <div className="pt-4 border-t border-gray-200">
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-1">Signed in as</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {session.user.name || session.user.email}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="lg:hidden p-4 border-t border-gray-200">
+            {session?.user && (
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 mb-1">Signed in as</p>
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {session.user.name || session.user.email}
+                </p>
+              </div>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSignOut}
+              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
         </div>
       </aside>
