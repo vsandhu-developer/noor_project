@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
 
 export async function GET(
   request: NextRequest,
@@ -50,15 +48,28 @@ export async function GET(
     }
 
     if (isImage) {
-      const filePath = join(process.cwd(), 'public', file.filePath)
-      const fileBuffer = await readFile(filePath)
+      if (file.filePath.startsWith('http://') || file.filePath.startsWith('https://')) {
+        return NextResponse.redirect(file.filePath)
+      } else {
+        try {
+          const { readFile } = await import('fs/promises')
+          const { join } = await import('path')
+          const filePath = join(process.cwd(), 'public', file.filePath)
+          const fileBuffer = await readFile(filePath)
 
-      return new NextResponse(fileBuffer, {
-        headers: {
-          'Content-Type': file.fileType,
-          'Content-Disposition': 'inline',
-        },
-      })
+          return new NextResponse(fileBuffer, {
+            headers: {
+              'Content-Type': file.fileType,
+              'Content-Disposition': 'inline',
+            },
+          })
+        } catch (error) {
+          return NextResponse.json(
+            { error: 'File not found' },
+            { status: 404 }
+          )
+        }
+      }
     }
 
     if (isPDF) {

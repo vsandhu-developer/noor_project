@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
+import { put } from '@vercel/blob'
 
 const ALLOWED_FILE_TYPES = [
   'application/pdf',
@@ -133,17 +131,46 @@ export async function POST(request: NextRequest) {
 
     const version = existingFile ? existingFile.version + 1 : 1
 
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', groupId)
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true })
-    }
-
-    const fileName = `${Date.now()}-${file.name}`
-    const filePath = join(uploadsDir, fileName)
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    await writeFile(filePath, buffer)
+    const fileName = `${Date.now()}-${file.name}`
+    const blobPath = `uploads/${groupId}/${fileName}`
+
+    let fileUrl: string
+    
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const blob = await put(blobPath, buffer, {
+          access: 'public',
+          contentType: file.type,
+        })
+        fileUrl = blob.url
+      } catch (error) {
+        console.error('Vercel Blob upload error:', error)
+        throw new Error('Failed to upload file to cloud storage')
+      }
+    } else {
+      try {
+        const { mkdir, writeFile } = await import('fs/promises')
+        const { join } = await import('path')
+        const { existsSync } = await import('fs')
+        
+        const uploadsDirPath = join(process.cwd(), 'public', 'uploads', groupId)
+        if (!existsSync(uploadsDirPath)) {
+          await mkdir(uploadsDirPath, { recursive: true })
+        }
+        const filePath = join(uploadsDirPath, fileName)
+        await writeFile(filePath, buffer)
+        fileUrl = `/uploads/${groupId}/${fileName}`
+      } catch (error) {
+        console.error('Local file upload error:', error)
+        return NextResponse.json(
+          { error: 'File storage not available. Please configure BLOB_READ_WRITE_TOKEN for Vercel deployments.' },
+          { status: 500 }
+        )
+      }
+    }
 
     const savedFile = await prisma.file.create({
       data: {
@@ -153,7 +180,7 @@ export async function POST(request: NextRequest) {
         fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
-        filePath: `/uploads/${groupId}/${fileName}`,
+        filePath: fileUrl,
         version,
       },
       include: {

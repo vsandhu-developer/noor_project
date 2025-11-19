@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
 
 export async function GET(
   request: NextRequest,
@@ -57,12 +55,30 @@ export async function GET(
       }
     }
 
-    const filePath = join(process.cwd(), 'public', file.filePath)
-    const fileBuffer = await readFile(filePath)
+    let fileBuffer: Buffer
+    let contentType: string = file.fileType
+
+    if (file.filePath.startsWith('http://') || file.filePath.startsWith('https://')) {
+      const response = await fetch(file.filePath)
+      fileBuffer = Buffer.from(await response.arrayBuffer())
+      contentType = response.headers.get('content-type') || file.fileType
+    } else {
+      try {
+        const { readFile } = await import('fs/promises')
+        const { join } = await import('path')
+        const filePath = join(process.cwd(), 'public', file.filePath)
+        fileBuffer = await readFile(filePath)
+      } catch (error) {
+        return NextResponse.json(
+          { error: 'File not found on server. It may have been stored in cloud storage.' },
+          { status: 404 }
+        )
+      }
+    }
 
     return new NextResponse(fileBuffer, {
       headers: {
-        'Content-Type': file.fileType,
+        'Content-Type': contentType,
         'Content-Disposition': `attachment; filename="${file.fileName}"`,
       },
     })

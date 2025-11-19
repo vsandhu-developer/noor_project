@@ -31,6 +31,9 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [sharingFiles, setSharingFiles] = useState<Set<string>>(new Set())
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<number>(0)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadingFileName, setUploadingFileName] = useState<string | null>(null)
 
   useEffect(() => {
     const socketInstance = getSocket()
@@ -272,22 +275,63 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
     formData.append('groupId', group.id)
     formData.append('name', file.name)
 
+    setIsUploading(true)
+    setUploadProgress(0)
+    setUploadingFileName(file.name)
+
     try {
-      const response = await fetch('/api/files', {
-        method: 'POST',
-        body: formData,
+      const xhr = new XMLHttpRequest()
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100)
+          setUploadProgress(percentComplete)
+        }
       })
 
-      if (response.ok) {
-        toast.success('File uploaded successfully')
-        router.refresh()
-      } else {
-        const data = await response.json()
-        toast.error(data.error || 'Failed to upload file')
-      }
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          toast.success('File uploaded successfully')
+          setUploadProgress(100)
+          setTimeout(() => {
+            setIsUploading(false)
+            setUploadProgress(0)
+            setUploadingFileName(null)
+            router.refresh()
+          }, 500)
+        } else {
+          const error = JSON.parse(xhr.responseText || '{}')
+          toast.error(error.error || 'Failed to upload file')
+          setIsUploading(false)
+          setUploadProgress(0)
+          setUploadingFileName(null)
+        }
+      })
+
+      xhr.addEventListener('error', () => {
+        toast.error('An error occurred during upload')
+        setIsUploading(false)
+        setUploadProgress(0)
+        setUploadingFileName(null)
+      })
+
+      xhr.addEventListener('abort', () => {
+        toast.error('Upload cancelled')
+        setIsUploading(false)
+        setUploadProgress(0)
+        setUploadingFileName(null)
+      })
+
+      xhr.open('POST', '/api/files')
+      xhr.send(formData)
     } catch (error) {
       toast.error('An error occurred')
+      setIsUploading(false)
+      setUploadProgress(0)
+      setUploadingFileName(null)
     }
+
+    e.target.value = ''
   }
 
   return (
@@ -501,12 +545,27 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
           </CardHeader>
           <CardContent>
             {currentMember.role !== 'VIEWER' && (
-              <div className="mb-4">
+              <div className="mb-4 space-y-2">
                 <Input
                   type="file"
                   onChange={handleFileUpload}
                   className="mb-2"
+                  disabled={isUploading}
                 />
+                {isUploading && uploadingFileName && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Uploading: {uploadingFileName}</span>
+                      <span className="text-gray-600 font-medium">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             <div className="space-y-2">
