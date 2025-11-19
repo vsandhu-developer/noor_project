@@ -34,6 +34,8 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [isUploading, setIsUploading] = useState(false)
   const [uploadingFileName, setUploadingFileName] = useState<string | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
+  const [showFileSelector, setShowFileSelector] = useState(false)
 
   useEffect(() => {
     const socketInstance = getSocket()
@@ -257,7 +259,7 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!messageContent.trim()) return
+    if (!messageContent.trim() && selectedFiles.size === 0) return
 
     try {
       const response = await fetch('/api/messages', {
@@ -265,7 +267,8 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           groupId: group.id,
-          content: messageContent,
+          content: messageContent || 'Shared file(s)',
+          attachmentIds: Array.from(selectedFiles),
         }),
       })
 
@@ -274,6 +277,8 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
       if (response.ok) {
         setMessages((prev: any[]) => [...prev, data.message])
         setMessageContent('')
+        setSelectedFiles(new Set())
+        setShowFileSelector(false)
         if (socket) {
           socket.emit('send-message', {
             groupId: group.id,
@@ -286,6 +291,16 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
     } catch (error) {
       toast.error('An error occurred')
     }
+  }
+
+  const toggleFileSelection = (fileId: string) => {
+    const newSet = new Set(selectedFiles)
+    if (newSet.has(fileId)) {
+      newSet.delete(fileId)
+    } else {
+      newSet.add(fileId)
+    }
+    setSelectedFiles(newSet)
   }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -522,6 +537,22 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
                           >
                             {message.content}
                           </div>
+                          {message.attachments && message.attachments.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {message.attachments.map((attachment: any) => (
+                                <a
+                                  key={attachment.id}
+                                  href={`/api/messages/attachments/${attachment.id}`}
+                                  download
+                                  className={`block text-xs underline ${
+                                    isCurrentUser ? 'text-blue-100' : 'text-blue-600'
+                                  }`}
+                                >
+                                  📎 {attachment.fileName}
+                                </a>
+                              ))}
+                            </div>
+                          )}
                           <div
                             className={`text-xs mt-1 ${
                               isCurrentUser
@@ -551,6 +582,28 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
                 <div ref={messagesEndRef} />
               </div>
               <div className="border-t p-4 bg-white">
+                {selectedFiles.size > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {Array.from(selectedFiles).map((fileId) => {
+                      const file = group.files.find((f: any) => f.id === fileId)
+                      return file ? (
+                        <span
+                          key={fileId}
+                          className="inline-flex items-center px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs"
+                        >
+                          {file.name}
+                          <button
+                            type="button"
+                            onClick={() => toggleFileSelection(fileId)}
+                            className="ml-2 text-blue-700 hover:text-blue-900"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : null
+                    })}
+                  </div>
+                )}
                 <form onSubmit={handleSendMessage} className="flex space-x-2">
                   <Input
                     value={messageContent}
@@ -558,10 +611,44 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
                     placeholder="Type a message..."
                     className="flex-1"
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFileSelector(!showFileSelector)}
+                    className="whitespace-nowrap"
+                  >
+                    📎 Attach
+                  </Button>
                   <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
                     Send
                   </Button>
                 </form>
+                {showFileSelector && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded border max-h-40 overflow-y-auto">
+                    <p className="text-xs font-medium mb-2 text-gray-700">Select files to share:</p>
+                    <div className="space-y-1">
+                      {group.files.length === 0 ? (
+                        <p className="text-xs text-gray-500">No files available</p>
+                      ) : (
+                        group.files.map((file: any) => (
+                          <label
+                            key={file.id}
+                            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedFiles.has(file.id)}
+                              onChange={() => toggleFileSelection(file.id)}
+                              className="rounded"
+                            />
+                            <span className="text-xs text-gray-700">{file.name}</span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>

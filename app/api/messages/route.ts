@@ -7,6 +7,7 @@ import { z } from 'zod'
 const createMessageSchema = z.object({
   groupId: z.string(),
   content: z.string().min(1),
+  attachmentIds: z.array(z.string()).optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -37,6 +38,7 @@ export async function GET(request: NextRequest) {
           },
         },
         readBy: true,
+        attachments: true,
       },
       orderBy: { createdAt: 'asc' },
     })
@@ -76,11 +78,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const attachmentIds = validatedData.attachmentIds || []
+    
+    const files = attachmentIds.length > 0
+      ? await prisma.file.findMany({
+          where: {
+            id: { in: attachmentIds },
+            groupId: validatedData.groupId,
+          },
+        })
+      : []
+
     const message = await prisma.message.create({
       data: {
         groupId: validatedData.groupId,
         userId: session.user.id,
         content: validatedData.content,
+        attachments: {
+          create: files.map((file) => ({
+            fileName: file.name,
+            fileType: file.fileType,
+            fileSize: file.fileSize,
+            filePath: file.filePath,
+          })),
+        },
       },
       include: {
         user: {
@@ -91,6 +112,7 @@ export async function POST(request: NextRequest) {
           },
         },
         readBy: true,
+        attachments: true,
       },
     })
 

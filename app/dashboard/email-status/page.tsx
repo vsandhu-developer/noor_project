@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { Navbar } from '@/components/Navbar'
+import { DashboardLayout } from '@/components/DashboardLayout'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -25,9 +25,8 @@ export default async function EmailStatusPage() {
   const emailConfigured = !!process.env.EMAIL_SERVICE_API_KEY
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Email Status & Settings</h1>
 
         <div className="space-y-6">
@@ -168,7 +167,7 @@ export default async function EmailStatusPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }
 

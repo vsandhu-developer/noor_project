@@ -1,14 +1,9 @@
-import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { AnimatedHomePage } from '@/components/AnimatedHomePage'
 
-export default async function Home() {
+export default async function HomePage() {
   const session = await getServerSession(authOptions)
 
-  if (session) {
-    redirect('/dashboard')
-  } else {
-    redirect('/auth/signin')
-  }
+  return <AnimatedHomePage session={session} />
 }
-
