@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node server.js",
-    "build": "next build",
+    "build": "npx prisma generate && next build",
     "start": "NODE_ENV=production node server.js",
     "lint": "next lint",
     "db:generate": "prisma generate",
@@ -51,4 +51,3 @@
     "typescript": "^5.3.3"
   }
 }
-
