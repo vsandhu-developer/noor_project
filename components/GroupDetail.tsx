@@ -22,6 +22,9 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
   const [messageContent, setMessageContent] = useState('')
   const [messages, setMessages] = useState(group.messages.reverse())
   const [socket, setSocket] = useState<any>(null)
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
 
   useEffect(() => {
     const socketInstance = getSocket()
@@ -52,6 +55,65 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
       } else {
         const data = await response.json()
         toast.error(data.error || 'Failed to join group')
+      }
+    } catch (error) {
+      toast.error('An error occurred')
+    }
+  }
+
+  const handleSearchMembers = async () => {
+    if (!memberSearch.trim()) return
+
+    try {
+      const response = await fetch(`/api/users/search?search=${encodeURIComponent(memberSearch)}`)
+      const data = await response.json()
+
+      // Filter out users who are already members
+      const existingMemberIds = new Set(group.members.map((m: any) => m.userId))
+      const filtered = data.users.filter((user: any) => !existingMemberIds.has(user.id))
+      setSearchResults(filtered)
+    } catch (error) {
+      toast.error('Failed to search users')
+    }
+  }
+
+  const handleAddMember = async (targetUserId: string) => {
+    try {
+      const response = await fetch(`/api/groups/${group.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: targetUserId, role: 'MEMBER' }),
+      })
+
+      if (response.ok) {
+        toast.success('Member added successfully')
+        setShowAddMember(false)
+        setMemberSearch('')
+        setSearchResults([])
+        router.refresh()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to add member')
+      }
+    } catch (error) {
+      toast.error('An error occurred')
+    }
+  }
+
+  const handleRemoveMember = async (targetUserId: string) => {
+    if (!confirm('Are you sure you want to remove this member?')) return
+
+    try {
+      const response = await fetch(`/api/groups/${group.id}/members/${targetUserId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('Member removed successfully')
+        router.refresh()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to remove member')
       }
     } catch (error) {
       toast.error('An error occurred')
@@ -123,7 +185,7 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">{group.name}</h1>
         <p className="text-gray-600 mt-2">{group.courseTopic}</p>
-        {group.description && <p className="text-gray-500 mt-2">{group.description}</p>}
+        {group.description && <p className="text-gray-600 mt-2">{group.description}</p>}
         {!currentMember && (
           <Button onClick={handleJoinGroup} className="mt-4">
             Join Group
@@ -218,7 +280,7 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
                   <div>
                     <div className="font-medium">{message.user.name}</div>
                     <div className="text-sm text-gray-600">{message.content}</div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-gray-500">
                       {formatDate(new Date(message.createdAt))}
                     </div>
                   </div>
@@ -257,7 +319,7 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
                 <div key={file.id} className="flex justify-between items-center p-2 border rounded">
                   <div>
                     <div className="font-medium">{file.name}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-600">
                       Uploaded by {file.user.name} • {formatDate(new Date(file.createdAt))}
                     </div>
                   </div>
@@ -286,11 +348,11 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
                 <div key={event.id} className="border rounded p-4">
                   <div className="font-medium">{event.title}</div>
                   <div className="text-sm text-gray-600">{event.description}</div>
-                  <div className="text-sm text-gray-500 mt-2">
+                  <div className="text-sm text-gray-600 mt-2">
                     {formatDate(new Date(event.startTime))} - {formatDate(new Date(event.endTime))}
                   </div>
                   {event.location && (
-                    <div className="text-sm text-gray-500">Location: {event.location}</div>
+                    <div className="text-sm text-gray-600">Location: {event.location}</div>
                   )}
                 </div>
               ))}
@@ -302,25 +364,114 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
       {activeTab === 'members' && currentMember && (
         <Card>
           <CardHeader>
-            <CardTitle>Members</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>Members ({group.members.length})</CardTitle>
+              {currentMember.role === 'ADMIN' && (
+                <Button onClick={() => setShowAddMember(true)} size="sm">
+                  Add Member
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
+            {showAddMember && currentMember.role === 'ADMIN' && (
+              <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+                <h3 className="font-medium mb-3">Add New Member</h3>
+                <div className="space-y-3">
+                  <Input
+                    placeholder="Search by email or name..."
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearchMembers()}
+                  />
+                  {searchResults.length > 0 && (
+                    <div className="border rounded-lg max-h-48 overflow-y-auto">
+                      {searchResults.map((user: any) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleAddMember(user.id)}
+                        >
+                          <div className="flex items-center space-x-2">
+                            {user.profilePhoto && (
+                              <Image
+                                src={user.profilePhoto}
+                                alt={user.name}
+                                width={32}
+                                height={32}
+                                className="rounded-full"
+                              />
+                            )}
+                            <div>
+                              <div className="text-sm font-medium">{user.name}</div>
+                              <div className="text-xs text-gray-600">{user.email}</div>
+                            </div>
+                          </div>
+                          <Button size="sm" variant="outline">
+                            Add
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex space-x-2">
+                    <Button
+                      onClick={handleSearchMembers}
+                      size="sm"
+                      disabled={!memberSearch.trim()}
+                    >
+                      Search
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setShowAddMember(false)
+                        setMemberSearch('')
+                        setSearchResults([])
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="space-y-4">
               {group.members.map((member: any) => (
-                <div key={member.id} className="flex items-center space-x-3">
-                  {member.user.profilePhoto && (
-                    <Image
-                      src={member.user.profilePhoto}
-                      alt={member.user.name}
-                      width={40}
-                      height={40}
-                      className="rounded-full"
-                    />
-                  )}
-                  <div>
-                    <div className="font-medium">{member.user.name}</div>
-                    <div className="text-sm text-gray-500">{member.role}</div>
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between p-2 hover:bg-gray-50 rounded"
+                >
+                  <div className="flex items-center space-x-3">
+                    {member.user.profilePhoto && (
+                      <Image
+                        src={member.user.profilePhoto}
+                        alt={member.user.name}
+                        width={40}
+                        height={40}
+                        className="rounded-full"
+                      />
+                    )}
+                    <div>
+                      <div className="font-medium">{member.user.name}</div>
+                      <div className="text-sm text-gray-600">
+                        {member.role} • {member.user.email}
+                      </div>
+                    </div>
                   </div>
+                  {currentMember.role === 'ADMIN' &&
+                    member.userId !== userId &&
+                    member.role !== 'ADMIN' && (
+                      <Button
+                        onClick={() => handleRemoveMember(member.userId)}
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Remove
+                      </Button>
+                    )}
                 </div>
               ))}
             </div>

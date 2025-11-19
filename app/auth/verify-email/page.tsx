@@ -63,7 +63,7 @@ export default function VerifyEmailPage() {
             <div className="text-center">
               <div className="text-green-600 text-5xl mb-4">✓</div>
               <p className="text-green-600 font-medium mb-4">{message}</p>
-              <p className="text-sm text-gray-500">Redirecting to sign in...</p>
+              <p className="text-sm text-gray-600">Redirecting to sign in...</p>
             </div>
           )}
 

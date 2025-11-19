@@ -46,7 +46,7 @@ export function SearchComponent() {
         <select
           value={type}
           onChange={(e) => setType(e.target.value as any)}
-          className="px-4 py-2 border rounded-md"
+          className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-900 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
           <option value="all">All</option>
           <option value="groups">Groups</option>
@@ -75,7 +75,7 @@ export function SearchComponent() {
                       <CardDescription>{group.courseTopic}</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-600">
                         {group._count.members} members
                       </div>
                     </CardContent>
@@ -104,9 +104,9 @@ export function SearchComponent() {
                         )}
                         <div>
                           <div className="font-medium">{user.name}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="text-sm text-gray-600">{user.email}</div>
                           {user.program && (
-                            <div className="text-sm text-gray-500">{user.program}</div>
+                            <div className="text-sm text-gray-600">{user.program}</div>
                           )}
                         </div>
                       </div>
@@ -127,7 +127,7 @@ export function SearchComponent() {
                       <div className="flex justify-between items-center">
                         <div>
                           <div className="font-medium">{file.name}</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-600">
                             {file.group.name} • {file.user.name}
                           </div>
                         </div>
@@ -151,7 +151,7 @@ export function SearchComponent() {
             (!results.users || results.users.length === 0) &&
             (!results.files || results.files.length === 0) && (
               <div className="text-center py-12">
-                <p className="text-gray-500">No results found</p>
+                <p className="text-gray-600">No results found</p>
               </div>
             )}
         </div>

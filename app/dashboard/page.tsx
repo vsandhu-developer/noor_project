@@ -86,7 +86,7 @@ export default async function DashboardPage() {
             <CardContent>
               <div className="space-y-2">
                 {userGroups.length === 0 ? (
-                  <p className="text-sm text-gray-500">No groups yet</p>
+                  <p className="text-sm text-gray-600">No groups yet</p>
                 ) : (
                   userGroups.map((member) => (
                     <Link
@@ -95,7 +95,7 @@ export default async function DashboardPage() {
                       className="block p-2 hover:bg-gray-50 rounded"
                     >
                       <div className="font-medium">{member.group.name}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-600">
                         {member.group._count.members} members
                       </div>
                     </Link>
@@ -116,12 +116,12 @@ export default async function DashboardPage() {
             <CardContent>
               <div className="space-y-2">
                 {upcomingEvents.length === 0 ? (
-                  <p className="text-sm text-gray-500">No upcoming events</p>
+                  <p className="text-sm text-gray-600">No upcoming events</p>
                 ) : (
                   upcomingEvents.map((event) => (
                     <div key={event.id} className="p-2">
                       <div className="font-medium">{event.title}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-600">
                         {new Date(event.startTime).toLocaleDateString()} - {event.group.name}
                       </div>
                     </div>
@@ -139,7 +139,7 @@ export default async function DashboardPage() {
             <CardContent>
               <div className="space-y-2">
                 {notifications.length === 0 ? (
-                  <p className="text-sm text-gray-500">No new notifications</p>
+                  <p className="text-sm text-gray-600">No new notifications</p>
                 ) : (
                   notifications.map((notification) => (
                     <Link
@@ -148,7 +148,7 @@ export default async function DashboardPage() {
                       className="block p-2 hover:bg-gray-50 rounded"
                     >
                       <div className="font-medium text-sm">{notification.title}</div>
-                      <div className="text-xs text-gray-500">{notification.message}</div>
+                      <div className="text-xs text-gray-600">{notification.message}</div>
                     </Link>
                   ))
                 )}

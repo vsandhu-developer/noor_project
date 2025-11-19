@@ -86,7 +86,7 @@ export default async function EmailStatusPage() {
                   </span>
                 </div>
                 {user?.emailVerified && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-600">
                     Verified on: {new Date(user.emailVerified).toLocaleString()}
                   </p>
                 )}
@@ -114,7 +114,7 @@ export default async function EmailStatusPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium">Email Notifications</span>
-                    <p className="text-xs text-gray-500">Receive notifications via email</p>
+                    <p className="text-xs text-gray-600">Receive notifications via email</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-sm ${
                     user?.emailNotifications 
@@ -127,7 +127,7 @@ export default async function EmailStatusPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium">Push Notifications</span>
-                    <p className="text-xs text-gray-500">Receive push notifications</p>
+                    <p className="text-xs text-gray-600">Receive push notifications</p>
                   </div>
                   <span className={`px-3 py-1 rounded-full text-sm ${
                     user?.pushNotifications 
@@ -137,7 +137,7 @@ export default async function EmailStatusPage() {
                     {user?.pushNotifications ? 'Enabled' : 'Disabled'}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-4">
+                <p className="text-xs text-gray-600 mt-4">
                   You can update these settings in your <a href="/profile" className="text-blue-600 hover:underline">profile settings</a>.
                 </p>
               </div>
@@ -151,13 +151,13 @@ export default async function EmailStatusPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-700">
                   In display mode, all email operations are logged to the browser console.
                 </p>
-                <p className="text-xs text-gray-500">
-                  Open your browser's developer console (F12) to see detailed email logs including:
+                <p className="text-xs text-gray-600">
+                  Open your browser&apos;s developer console (F12) to see detailed email logs including:
                 </p>
-                <ul className="text-xs text-gray-500 list-disc list-inside ml-4 mt-2">
+                <ul className="text-xs text-gray-600 list-disc list-inside ml-4 mt-2">
                   <li>Verification emails</li>
                   <li>Password reset emails</li>
                   <li>Event reminder emails</li>

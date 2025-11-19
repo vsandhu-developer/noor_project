@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
 import { Input } from './ui/input'
@@ -32,11 +32,7 @@ export function GroupsList() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchGroups()
-  }, [search])
-
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     try {
       const url = search
         ? `/api/groups?search=${encodeURIComponent(search)}`
@@ -49,7 +45,11 @@ export function GroupsList() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [search])
+
+  useEffect(() => {
+    fetchGroups()
+  }, [fetchGroups])
 
   if (loading) {
     return <div>Loading...</div>
@@ -89,7 +89,7 @@ export function GroupsList() {
                   </span>
                 ))}
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-600">
                 {group._count.members} members • {group._count.files} files • {group._count.events} events
               </div>
               <Button asChild className="mt-4 w-full">
@@ -102,7 +102,7 @@ export function GroupsList() {
 
       {groups.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-gray-500">No groups found</p>
+          <p className="text-gray-600">No groups found</p>
         </div>
       )}
     </div>

@@ -168,7 +168,7 @@ export function ProfileForm({ user }: { user: User }) {
               id="profileVisibility"
               value={formData.profileVisibility}
               onChange={(e) => setFormData({ ...formData, profileVisibility: e.target.value })}
-              className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+              className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
             >
               <option value="PUBLIC">Public</option>
               <option value="RESTRICTED">Restricted</option>
