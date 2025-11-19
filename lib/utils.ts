@@ -26,6 +26,7 @@ export function isValidStudentEmail(email: string): boolean {
     /@student\./i,
     /@university\./i,
     /@college\./i,
+    /@algonquincdistudent\.ca$/i,
   ]
   return isValidEmail(email) && studentEmailPatterns.some(pattern => pattern.test(email))
 }
