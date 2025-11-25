@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
 
 export async function GET(
   request: NextRequest,
@@ -43,30 +41,48 @@ export async function GET(
       )
     }
 
-    if (attachment.filePath.startsWith('https://') || attachment.filePath.startsWith('http://')) {
-      return NextResponse.redirect(attachment.filePath)
+    let fileData: ArrayBuffer
+    let contentType: string = attachment.fileType
+
+    if (attachment.filePath.startsWith('http://') || attachment.filePath.startsWith('https://')) {
+      try {
+        const response = await fetch(attachment.filePath)
+        if (!response.ok) {
+          return NextResponse.json(
+            { error: 'File not found in cloud storage' },
+            { status: 404 }
+          )
+        }
+        fileData = await response.arrayBuffer()
+        contentType = response.headers.get('content-type') || attachment.fileType
+      } catch (fetchError) {
+        return NextResponse.json(
+          { error: 'Failed to fetch file from cloud storage' },
+          { status: 500 }
+        )
+      }
+    } else {
+      try {
+        const { readFile } = await import('fs/promises')
+        const { join } = await import('path')
+        const filePath = join(process.cwd(), 'public', attachment.filePath)
+        const buffer = await readFile(filePath)
+        fileData = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      } catch (fileError) {
+        return NextResponse.json(
+          { error: 'File not found on server' },
+          { status: 404 }
+        )
+      }
     }
 
-    try {
-      const fileBuffer = await readFile(attachment.filePath)
-      const arrayBuffer = fileBuffer.buffer.slice(
-        fileBuffer.byteOffset,
-        fileBuffer.byteOffset + fileBuffer.byteLength
-      )
-
-      return new Response(arrayBuffer, {
-        headers: {
-          'Content-Type': attachment.fileType,
-          'Content-Disposition': `attachment; filename="${attachment.fileName}"`,
-          'Content-Length': attachment.fileSize.toString(),
-        },
-      })
-    } catch (fileError) {
-      return NextResponse.json(
-        { error: 'File not found on server' },
-        { status: 404 }
-      )
-    }
+    return new Response(fileData, {
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${attachment.fileName}"`,
+        'Content-Length': attachment.fileSize.toString(),
+      },
+    })
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error' },

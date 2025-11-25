@@ -1,7 +1,4 @@
-import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -41,8 +38,8 @@ export default async function ShareFilePage({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Link href="/groups">
-                <Button>Go to Groups</Button>
+              <Link href="/">
+                <Button>Go to Home</Button>
               </Link>
             </CardContent>
           </Card>
@@ -70,8 +67,8 @@ export default async function ShareFilePage({
       )
     }
 
-    const filePath = join(process.cwd(), 'public', file.filePath)
-    const fileBuffer = await readFile(filePath)
+    const isImage = file.fileType.startsWith('image/')
+    const isPdf = file.fileType === 'application/pdf'
 
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
@@ -94,6 +91,46 @@ export default async function ShareFilePage({
                 <strong>Type:</strong> {file.fileType}
               </p>
             </div>
+
+            {(isImage || isPdf) && (
+              <div className="border rounded-lg p-4 bg-gray-50">
+                {isImage ? (
+                  <div className="flex justify-center">
+                    {file.filePath.startsWith('http://') || file.filePath.startsWith('https://') ? (
+                      <img
+                        src={file.filePath}
+                        alt={file.name}
+                        className="max-w-full h-auto max-h-96 rounded"
+                      />
+                    ) : (
+                      <img
+                        src={file.filePath}
+                        alt={file.name}
+                        className="max-w-full h-auto max-h-96 rounded"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-2">PDF Preview</p>
+                    {file.filePath.startsWith('http://') || file.filePath.startsWith('https://') ? (
+                      <iframe
+                        src={file.filePath}
+                        className="w-full h-96 border rounded"
+                        title={file.name}
+                      />
+                    ) : (
+                      <iframe
+                        src={file.filePath}
+                        className="w-full h-96 border rounded"
+                        title={file.name}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex space-x-2">
               <a
                 href={`/api/files/${file.id}?token=${params.token}`}
@@ -101,8 +138,8 @@ export default async function ShareFilePage({
               >
                 <Button>Download File</Button>
               </a>
-              <Link href={`/groups/${file.groupId}`}>
-                <Button variant="outline">View Group</Button>
+              <Link href="/">
+                <Button variant="outline">Go to Home</Button>
               </Link>
             </div>
           </CardContent>
@@ -120,8 +157,8 @@ export default async function ShareFilePage({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Link href="/groups">
-              <Button>Go to Groups</Button>
+            <Link href="/">
+              <Button>Go to Home</Button>
             </Link>
           </CardContent>
         </Card>
