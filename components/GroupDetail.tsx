@@ -36,6 +36,7 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
   const [uploadingFileName, setUploadingFileName] = useState<string | null>(null)
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
   const [showFileSelector, setShowFileSelector] = useState(false)
+  const [deletingFiles, setDeletingFiles] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const socketInstance = getSocket()
@@ -202,6 +203,36 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
       const newSet = new Set(sharingFiles)
       newSet.delete(fileId)
       setSharingFiles(newSet)
+    }
+  }
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const newSet = new Set(deletingFiles)
+      newSet.add(fileId)
+      setDeletingFiles(newSet)
+
+      const response = await fetch(`/api/files/${fileId}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        toast.success('File deleted successfully')
+        router.refresh()
+      } else {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to delete file')
+      }
+    } catch (error) {
+      toast.error('An error occurred')
+    } finally {
+      const newSet = new Set(deletingFiles)
+      newSet.delete(fileId)
+      setDeletingFiles(newSet)
     }
   }
 
@@ -715,14 +746,25 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
                       Download
                     </a>
                     {(file.userId === userId || currentMember.role === 'ADMIN') && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleShareFile(file.id)}
-                        disabled={sharingFiles.has(file.id)}
-                      >
-                        {sharingFiles.has(file.id) ? 'Sharing...' : 'Share'}
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleShareFile(file.id)}
+                          disabled={sharingFiles.has(file.id)}
+                        >
+                          {sharingFiles.has(file.id) ? 'Sharing...' : 'Share'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDeleteFile(file.id)}
+                          disabled={deletingFiles.has(file.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300"
+                        >
+                          {deletingFiles.has(file.id) ? 'Deleting...' : 'Delete'}
+                        </Button>
+                      </>
                     )}
                   </div>
                 </div>

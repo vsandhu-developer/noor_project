@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { v2 as cloudinary } from 'cloudinary'
+
+if (
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  })
+}
 
 export async function GET(
   request: NextRequest,
@@ -153,6 +166,28 @@ export async function DELETE(
         { error: 'Insufficient permissions' },
         { status: 403 }
       )
+    }
+
+    if (file.filePath && file.filePath.startsWith('https://res.cloudinary.com/')) {
+      try {
+        const urlMatch = file.filePath.match(/\/upload\/(?:v\d+\/)?(.+)/)
+        if (urlMatch && urlMatch[1]) {
+          const publicIdWithExtension = urlMatch[1]
+          const publicId = publicIdWithExtension.replace(/\.[^/.]+$/, '')
+          await cloudinary.uploader.destroy(publicId)
+        }
+      } catch (error) {
+        console.error('Error deleting file from Cloudinary:', error)
+      }
+    } else if (file.filePath && !file.filePath.startsWith('http')) {
+      try {
+        const { unlink } = await import('fs/promises')
+        const { join } = await import('path')
+        const filePath = join(process.cwd(), 'public', file.filePath)
+        await unlink(filePath)
+      } catch (error) {
+        console.error('Error deleting local file:', error)
+      }
     }
 
     await prisma.file.delete({
