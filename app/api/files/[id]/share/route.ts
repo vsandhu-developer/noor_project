@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import crypto from 'crypto'
 import { z } from 'zod'
 
 const shareFileSchema = z.object({
@@ -46,12 +45,17 @@ export async function POST(
     const body = await request.json()
     const validatedData = shareFileSchema.parse(body)
 
-    const shareToken = crypto.randomBytes(32).toString('hex')
+    if (!file.filePath || !file.filePath.startsWith('https://')) {
+      return NextResponse.json(
+        { error: 'File is not stored in Cloudinary. Only Cloudinary files can be shared.' },
+        { status: 400 }
+      )
+    }
 
     const updatedFile = await prisma.file.update({
       where: { id: params.id },
       data: {
-        shareToken,
+        shareToken: file.filePath,
         isPublic: validatedData.isPublic ?? false,
       },
       include: {
@@ -71,13 +75,11 @@ export async function POST(
       },
     })
 
-    const shareUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/files/share/${shareToken}`
-
     return NextResponse.json(
       {
         file: updatedFile,
-        shareToken: updatedFile.shareToken,
-        shareUrl,
+        shareUrl: file.filePath,
+        isPublic: updatedFile.isPublic,
       },
       { status: 200 }
     )
@@ -130,14 +132,11 @@ export async function GET(
       )
     }
 
-    const shareUrl = file.shareToken
-      ? `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/files/share/${file.shareToken}`
-      : null
+    const shareUrl = file.shareToken || file.filePath
 
     return NextResponse.json(
       {
-        shareToken: file.shareToken,
-        shareUrl,
+        shareUrl: shareUrl && shareUrl.startsWith('https://') ? shareUrl : null,
         isPublic: file.isPublic,
       },
       { status: 200 }

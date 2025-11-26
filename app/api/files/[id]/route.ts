@@ -14,15 +14,42 @@ export async function GET(
     let file
 
     if (shareToken) {
-      file = await prisma.file.findUnique({
-        where: { shareToken },
-      })
+      if (shareToken.startsWith('https://')) {
+        file = await prisma.file.findFirst({
+          where: { 
+            shareToken: shareToken,
+            isPublic: true,
+          },
+        })
+        
+        if (!file) {
+          const response = await fetch(shareToken)
+          if (response.ok) {
+            const fileData = await response.arrayBuffer()
+            const contentType = response.headers.get('content-type') || 'application/octet-stream'
+            return new Response(fileData, {
+              headers: {
+                'Content-Type': contentType,
+                'Content-Disposition': 'inline',
+              },
+            })
+          }
+          return NextResponse.json(
+            { error: 'File not found or not publicly accessible' },
+            { status: 404 }
+          )
+        }
+      } else {
+        file = await prisma.file.findUnique({
+          where: { shareToken },
+        })
 
-      if (!file || !file.isPublic) {
-        return NextResponse.json(
-          { error: 'File not found or not publicly accessible' },
-          { status: 404 }
-        )
+        if (!file || !file.isPublic) {
+          return NextResponse.json(
+            { error: 'File not found or not publicly accessible' },
+            { status: 404 }
+          )
+        }
       }
     } else {
       const session = await getServerSession(authOptions)

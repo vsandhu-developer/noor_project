@@ -693,10 +693,10 @@ export function GroupDetail({ group, currentMember, userId }: GroupDetailProps) 
                     <div className="text-sm text-gray-600">
                       Uploaded by {file.user.name} • {formatDate(new Date(file.createdAt))}
                     </div>
-                    {file.shareToken && (
+                    {file.shareToken && file.shareToken.startsWith('https://') && (
                       <div className="text-xs text-green-600 mt-1">
                         Shared • <a
-                          href={`/files/share/${file.shareToken}`}
+                          href={file.shareToken}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="underline"

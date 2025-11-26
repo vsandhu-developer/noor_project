@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { put } from '@vercel/blob'
+import { v2 as cloudinary } from 'cloudinary'
 
 const ALLOWED_FILE_TYPES = [
   'application/pdf',
@@ -13,6 +13,18 @@ const ALLOWED_FILE_TYPES = [
 ]
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
+
+if (
+  process.env.CLOUDINARY_CLOUD_NAME &&
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET
+) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  })
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -131,45 +143,41 @@ export async function POST(request: NextRequest) {
 
     const version = existingFile ? existingFile.version + 1 : 1
 
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      return NextResponse.json(
+        { error: 'Cloudinary is not configured. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables.' },
+        { status: 500 }
+      )
+    }
+
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
     const fileName = `${Date.now()}-${file.name}`
-    const blobPath = `uploads/${groupId}/${fileName}`
 
     let fileUrl: string
     
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      try {
-        const blob = await put(blobPath, buffer, {
-          access: 'public',
-          contentType: file.type,
-        })
-        fileUrl = blob.url
-      } catch (error) {
-        console.error('Vercel Blob upload error:', error)
-        throw new Error('Failed to upload file to cloud storage')
-      }
-    } else {
-      try {
-        const { mkdir, writeFile } = await import('fs/promises')
-        const { join } = await import('path')
-        const { existsSync } = await import('fs')
-        
-        const uploadsDirPath = join(process.cwd(), 'public', 'uploads', groupId)
-        if (!existsSync(uploadsDirPath)) {
-          await mkdir(uploadsDirPath, { recursive: true })
-        }
-        const filePath = join(uploadsDirPath, fileName)
-        await writeFile(filePath, buffer)
-        fileUrl = `/uploads/${groupId}/${fileName}`
-      } catch (error) {
-        console.error('Local file upload error:', error)
-        return NextResponse.json(
-          { error: 'File storage not available. Please configure BLOB_READ_WRITE_TOKEN for Vercel deployments.' },
-          { status: 500 }
-        )
-      }
+    try {
+      const base64String = buffer.toString('base64')
+      const dataUri = `data:${file.type};base64,${base64String}`
+      
+      const uploadResult = await cloudinary.uploader.upload(dataUri, {
+        folder: `campusconnect/${groupId}`,
+        resource_type: 'auto',
+        public_id: fileName.replace(/\.[^/.]+$/, ''),
+      })
+      
+      fileUrl = uploadResult.secure_url
+    } catch (error) {
+      console.error('Cloudinary upload error:', error)
+      return NextResponse.json(
+        { error: 'Failed to upload file to Cloudinary' },
+        { status: 500 }
+      )
     }
 
     const savedFile = await prisma.file.create({

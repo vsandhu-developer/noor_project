@@ -9,7 +9,7 @@ export default async function ShareFilePage({
   params: { token: string }
 }) {
   try {
-    const file = await prisma.file.findUnique({
+    let file = await prisma.file.findUnique({
       where: { shareToken: params.token },
       include: {
         user: {
@@ -27,7 +27,60 @@ export default async function ShareFilePage({
       },
     })
 
+    if (!file && params.token.startsWith('https://')) {
+      file = await prisma.file.findFirst({
+        where: { 
+          shareToken: params.token,
+          isPublic: true,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          group: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      })
+    }
+
     if (!file) {
+      if (params.token.startsWith('https://')) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <Card className="w-full max-w-2xl">
+              <CardHeader>
+                <CardTitle>Cloudinary File</CardTitle>
+                <CardDescription>
+                  Direct file access via Cloudinary URL
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex space-x-2">
+                  <a
+                    href={params.token}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button>Download File</Button>
+                  </a>
+                  <Link href="/">
+                    <Button variant="outline">Go to Home</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+      }
+
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <Card className="w-full max-w-md">
